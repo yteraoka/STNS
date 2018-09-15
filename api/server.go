@@ -68,17 +68,22 @@ func (s *server) Run() error {
 	e.Use(middleware.Backend(b))
 	e.Use(middleware.AddHeader(b))
 	e.Use(emiddleware.Recover())
+
+	// https://echo.labstack.com/middleware/logger
 	e.Use(emiddleware.LoggerWithConfig(emiddleware.LoggerConfig{
 		Format: `{"time":"${time_rfc3339_nano}","remote_ip":"${remote_ip}","host":"${host}",` +
-			`"method":"${method}","uri":"${uri}","status":${status}` + "\n",
+			`"method":"${method}","uri":"${uri}","status":${status}}` + "\n",
 	}))
 
 	if s.config.BasicAuth != nil {
 		e.Use(emiddleware.BasicAuthWithConfig(
 			emiddleware.BasicAuthConfig{
 				Validator: func(username, password string, c echo.Context) (bool, error) {
-					if username == s.config.BasicAuth.User && password == s.config.BasicAuth.Password {
-						return true, nil
+					for _, confCred := range s.config.BasicAuth {
+						if username == confCred.User && password == confCred.Password {
+							c.Set("client_name", username)
+							return true, nil
+						}
 					}
 					return false, nil
 				},
@@ -101,10 +106,13 @@ func (s *server) Run() error {
 
 				return false
 			},
-			Validator: func(token string) bool {
-				for _, a := range s.config.TokenAuth.Tokens {
-					if a == token {
-						return true
+			Validator: func(token string, c echo.Context) bool {
+				for _, confCred := range s.config.TokenAuth {
+					for _, a := range confCred.Tokens {
+						if a == token {
+							c.Set("client_name", confCred.Name)
+							return true
+						}
 					}
 				}
 				return false

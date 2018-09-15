@@ -19,7 +19,7 @@ type (
 	}
 
 	// TokenAuthValidator defines a function to validate TokenAuth credentials.
-	TokenAuthValidator func(string) bool
+	TokenAuthValidator func(string, echo.Context) bool
 )
 
 const (
@@ -41,7 +41,7 @@ func TokenAuthWithConfig(config TokenAuthConfig) echo.MiddlewareFunc {
 			}
 
 			t := c.Request().Header.Get("Authorization")
-			if config.Validator(strings.TrimSpace(strings.Replace(t, "token", "", 1))) {
+			if config.Validator(strings.TrimSpace(strings.Replace(t, "token", "", 1)), c) {
 				return next(c)
 			}
 			// Need to return `401` for browsers to pop-up login box.
